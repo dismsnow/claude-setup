@@ -1,0 +1,5 @@
+{
+  "effortLevel": "max",
+  "theme": "dark-ansi",
+  "model": "opus[1m]"
+}

@@ -1,0 +1,11 @@
+# macOS
+.DS_Store
+
+# local virtualenv used to regenerate docs/*.docx
+.venv/
+
+# marker files written by install.sh into installed copies, never into the repo
+.installed-by-claude-setup
+
+# Office lock files, created when a .docx in docs/ is open
+~$*

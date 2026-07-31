@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"\nimport sys, json, subprocess\ndata = json.load(sys.stdin)\nf = data.get('tool_input', {}).get('file_path', '')\nif f.endswith(('.ts', '.tsx')) and 'Smart_Plantation' in f:\n    subprocess.run(['node_modules/.bin/prettier', '--write', f], cwd='/Users/marc/Desktop/GlobalWorkspace/Smart_Plantation', capture_output=True)\n\""
+          }
+        ]
+      }
+    ]
+  }
+}
