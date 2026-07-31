@@ -197,6 +197,21 @@ if [ "$DO_HOME" -eq 1 ] && [ -d "$HOME_SRC" ]; then
                    "commands/$(basename "$cmd")"
     done
   fi
+
+  # Hook scripts referenced by settings.json. These must land before the
+  # settings that point at them are useful, but order doesn't matter here —
+  # a hook whose script is missing simply no-ops until the next run.
+  if [ -d "$HOME_SRC/hooks" ]; then
+    for hk in "$HOME_SRC/hooks"/*.sh; do
+      [ -f "$hk" ] || continue
+      dest="$HOME/.claude/hooks/$(basename "$hk")"
+      install_file "$hk" "$dest" "hooks/$(basename "$hk")"
+      # Cloud-drive and zip transfers drop the executable bit; settings.json
+      # invokes these via `bash`, but restore it anyway so they stay runnable
+      # by hand.
+      run chmod +x "$dest"
+    done
+  fi
 fi
 
 # --- next steps -------------------------------------------------------------

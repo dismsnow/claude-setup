@@ -20,8 +20,9 @@ Then restart Claude Code. That's the entire process.
 |---|---|---|
 | `skills/` | `~/.claude/skills/` | 58 skills, available in **every** project on the machine |
 | `home/CLAUDE.md` | `~/.claude/CLAUDE.md` | Global instructions applied to every session |
-| `home/settings.json` | `~/.claude/settings.json` | Model, theme, effort level |
+| `home/settings.json` | `~/.claude/settings.json` | Model, theme, effort level, hook wiring |
 | `home/commands/` | `~/.claude/commands/` | Custom slash commands (`/rn-prettier`) |
+| `home/hooks/` | `~/.claude/hooks/` | Hook scripts referenced by `settings.json` |
 
 `~/.claude/` is created by Claude Code itself on first launch — there is no need to
 make it by hand. The installer creates any missing subdirectories.
@@ -81,6 +82,36 @@ net for skills added later.
 | Plugin marketplaces | Installed through the plugin system |
 
 Anywhere else is invisible to Claude Code.
+
+## Hooks: making skills fire reliably
+
+Skills influence behaviour but nothing enforces them — Claude can simply not invoke
+one. Hooks are different: the harness runs them, so they fire every time regardless
+of what Claude remembers.
+
+`home/hooks/rn-skill-reminder.sh` is a `PreToolUse` hook on `Edit|Write`. Before any
+`.ts`/`.tsx` file is written it injects a reminder naming the relevant React Native
+skills, so the prompt to consult them is present at the moment of the edit rather
+than depending on recall.
+
+It **self-detects Expo**: the script walks up from the file being edited, finds the
+nearest `package.json`, and stays completely silent unless that manifest declares
+`expo` or `react-native`. One global config therefore covers every RN project and
+never fires in a Python repo or a docs folder.
+
+It does not force a skill to be used, and deliberately says so in its own text —
+a reminder that fired on every edit and demanded a skill each time would train the
+opposite of judgment. It guarantees the reminder, not the outcome.
+
+Test it without touching Claude Code:
+
+```bash
+echo '{"tool_name":"Edit","tool_input":{"file_path":"/path/to/a/Screen.tsx"}}' \
+  | bash home/hooks/rn-skill-reminder.sh | jq -r '.hookSpecificOutput.additionalContext'
+```
+
+Prints the reminder inside an Expo project, prints nothing anywhere else. Run
+`/hooks` in Claude Code to review or disable it.
 
 ## Project-scoped skills
 

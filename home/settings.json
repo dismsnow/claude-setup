@@ -1,5 +1,19 @@
 {
   "effortLevel": "max",
   "theme": "dark-ansi",
-  "model": "opus[1m]"
+  "model": "opus[1m]",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.claude/hooks/rn-skill-reminder.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
 }
