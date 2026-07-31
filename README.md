@@ -83,6 +83,62 @@ net for skills added later.
 
 Anywhere else is invisible to Claude Code.
 
+## Keeping this private at a new job
+
+If you don't want a company repo to reveal that you use AI tooling, the whole job is
+done by `home/gitignore_global` — installed to `~/.gitignore_global` and wired up with
+`core.excludesFile`. It hides `.claude/`, `CLAUDE.md`, `.mcp.json` and a few other
+assistant conventions from **every** repo on the machine, automatically.
+
+**Why not a project `.gitignore`?** Because that file is committed and pushed. A line
+reading `.claude/` in a company repo announces precisely what you were keeping quiet.
+`~/.gitignore_global` is never committed anywhere.
+
+Commit attribution is handled too — `home/settings.json` sets:
+
+```json
+"attribution": { "commit": "", "pr": "" }
+```
+
+Without that, commits authored through Claude Code carry a `Co-Authored-By: Claude`
+trailer into company history.
+
+### Order of operations at a new job
+
+Do these **before** the first `git add` in any work repo:
+
+```bash
+git clone <your-private-repo> ~/claude-setup
+cd ~/claude-setup && ./install.sh          # sets both protections
+git config --global core.excludesFile      # verify: ~/.gitignore_global
+```
+
+Then, in the first work repo you clone, sanity-check before committing:
+
+```bash
+git status --porcelain -uall | grep -iE 'claude|\.mcp|agents\.md'
+# no output = clean
+```
+
+Keep `~/claude-setup` in your **home** directory, never inside a work folder — a repo
+nested in a work checkout can be picked up by the outer repo.
+
+### The one thing this cannot fix
+
+A global gitignore only affects **untracked** files. Anything already committed stays
+tracked and keeps showing up in `git status` forever, ignore rules or not. To stop
+tracking something that is already in a repo:
+
+```bash
+git rm -r --cached .claude    # untrack, keep the files on disk
+git commit -m "remove local config"
+```
+
+That stops future commits but does **not** erase it from history. Removing it from
+history means rewriting commits and force-pushing — which is itself conspicuous. The
+cheap, reliable move is to get the global ignore in place before the first commit at
+a new job, so the situation never arises.
+
 ## Hooks: making skills fire reliably
 
 Skills influence behaviour but nothing enforces them — Claude can simply not invoke

@@ -1,0 +1,24 @@
+# Global gitignore — wired up via:
+#   git config --global core.excludesFile ~/.gitignore_global
+#
+# This file is never committed to any repository. It keeps AI-tooling config out
+# of every repo on this machine without putting a revealing line in any project's
+# own .gitignore (which IS committed, and would advertise exactly what this is
+# meant to keep private).
+#
+# Applies to every repo automatically, including ones cloned at a future job.
+
+# Claude Code — project config, instructions, MCP servers
+.claude/
+CLAUDE.md
+.mcp.json
+
+# Other AI assistant conventions, same reasoning
+AGENTS.md
+.cursor/
+.cursorrules
+.aider*
+.github/copilot-instructions.md
+
+# macOS
+.DS_Store

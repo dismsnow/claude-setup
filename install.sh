@@ -198,6 +198,24 @@ if [ "$DO_HOME" -eq 1 ] && [ -d "$HOME_SRC" ]; then
     done
   fi
 
+  # Global gitignore. Keeps .claude/, CLAUDE.md and .mcp.json out of every repo
+  # on the machine WITHOUT adding a revealing line to any project's own
+  # .gitignore — that file gets committed, this one never does.
+  if [ -f "$HOME_SRC/gitignore_global" ]; then
+    install_file "$HOME_SRC/gitignore_global" "$HOME/.gitignore_global" "gitignore_global"
+    current="$(git config --global core.excludesFile 2>/dev/null || true)"
+    if [ -z "$current" ]; then
+      run git config --global core.excludesFile "$HOME/.gitignore_global"
+      printf '  %-24s wired up (core.excludesFile)\n' "git config"
+    elif [ "$current" = "$HOME/.gitignore_global" ]; then
+      printf '  %-24s already wired up\n' "git config"
+    else
+      # Don't clobber an existing global ignore the user set up deliberately.
+      printf '  %-24s SKIPPED — core.excludesFile already points at %s\n' "git config" "$current"
+      printf '  %-24s merge ~/.gitignore_global into it by hand if wanted\n' ""
+    fi
+  fi
+
   # Hook scripts referenced by settings.json. These must land before the
   # settings that point at them are useful, but order doesn't matter here —
   # a hook whose script is missing simply no-ops until the next run.
