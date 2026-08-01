@@ -6,6 +6,13 @@ tags: android, hermes, mmap, tti, startup
 
 # Skill: Disable JS Bundle Compression
 
+> **Expo / prebuild projects:** if `android/` is generated (gitignored), read
+> `prebuild-android-release-build.md` first — edits to generated Gradle files are
+> discarded by `expo prebuild --clean`. Note also that current Expo SDKs already
+> default `enableBundleCompression` to `false`, so the fast path is usually
+> already active and this becomes a *verification*, not a fix. The guidance below
+> applies as written to bare React Native projects with committed native directories.
+
 Disable Android JS bundle compression to enable Hermes memory mapping for faster startup.
 
 ## Quick Config

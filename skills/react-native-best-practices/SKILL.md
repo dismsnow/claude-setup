@@ -1,6 +1,6 @@
 ---
 name: react-native-best-practices
-description: Provides React Native performance optimization guidelines for FPS, TTI, bundle size, memory leaks, re-renders, and animations. Applies to tasks involving Hermes optimization, JS thread blocking, bridge overhead, FlashList, native modules, or debugging jank and frame drops.
+description: Provides React Native performance optimization guidelines for FPS, TTI, bundle size, memory leaks, re-renders, and animations. Applies to tasks involving Hermes optimization, JS thread blocking, bridge overhead, FlashList, native modules, or debugging jank and frame drops. Also covers Expo prebuild / Continuous Native Generation - where to put native build settings (expo-build-properties, config plugins) so they survive `expo prebuild --clean`, enabling R8 and resource shrinking in an Expo app, the New Architecture, and why a hand-edited android/ or ios/ file disappeared.
 license: MIT
 metadata:
   author: Callstack
@@ -35,6 +35,12 @@ Reference these guidelines when:
 - Writing native modules (Turbo Modules)
 - Profiling React Native performance
 - Reviewing React Native code for performance
+- Configuring native build settings in an Expo project (prebuild / CNG)
+- Setting up release builds for a new Expo app
+
+**Scope note:** these references target new projects and new code. Existing, working code
+and shipping build configuration should not be retrofitted on the strength of a guideline
+here — report the difference and let the owner decide.
 
 ## Security Notes
 
@@ -48,10 +54,31 @@ Reference these guidelines when:
 |----------|----------|--------|--------|
 | 1 | FPS & Re-renders | CRITICAL | `js-*` |
 | 2 | Bundle Size | CRITICAL | `bundle-*` |
-| 3 | TTI Optimization | HIGH | `native-*`, `bundle-*` |
-| 4 | Native Performance | HIGH | `native-*` |
-| 5 | Memory Management | MEDIUM-HIGH | `js-*`, `native-*` |
-| 6 | Animations | MEDIUM | `js-*` |
+| 3 | Prebuild & Native Config | CRITICAL | `prebuild-*` |
+| 4 | TTI Optimization | HIGH | `native-*`, `bundle-*` |
+| 5 | Native Performance | HIGH | `native-*` |
+| 6 | Memory Management | MEDIUM-HIGH | `js-*`, `native-*` |
+| 7 | Animations | MEDIUM | `js-*` |
+
+## Before Changing Native Config: Check the Project Mode
+
+If `android/` and `ios/` are **generated** (gitignored, with an `app.config.*` present), the
+project uses Continuous Native Generation and hand-edits to those directories are discarded
+by `expo prebuild --clean`. Native settings must be declared in app config or a config plugin
+instead. Determine this *before* proposing any native change:
+
+```bash
+grep -nE '^/?(ios|android)/?$' .gitignore   # a match means generated
+```
+
+Start at [prebuild-cng-workflow.md][prebuild-cng-workflow]. The [bundle-r8-android.md][bundle-r8-android]
+and [bundle-hermes-mmap.md][bundle-hermes-mmap] references describe the same settings as direct
+native edits — correct for bare React Native, discarded in a CNG project.
+
+## Related Skills
+
+- **`react-native-security`** — secrets, token storage, deep links, WebView, OTA code signing, supply chain
+- **`typescript-performance`** — TypeScript runtime/bundle cost and type-check speed
 
 ## Quick Reference
 
@@ -167,6 +194,21 @@ Full documentation with code examples in [references/][references]:
 | [native-memory-leaks.md][native-memory-leaks] | MEDIUM | Native memory leak hunting |
 | [native-android-16kb-alignment.md][native-android-16kb-alignment] | CRITICAL | Third-party library alignment for Google Play |
 
+### Prebuild & Native Config (`prebuild-*`)
+
+For Expo projects where `android/`+`ios/` are generated. See the project-mode check above.
+
+| File | Impact | Description |
+|------|--------|-------------|
+| [prebuild-cng-workflow.md][prebuild-cng-workflow] | CRITICAL | Detect project mode; where native changes belong |
+| [prebuild-build-properties.md][prebuild-build-properties] | HIGH | Declarative native config property reference |
+| [prebuild-config-plugin-authoring.md][prebuild-config-plugin-authoring] | HIGH | Idempotent config plugins that fail loudly |
+| [prebuild-android-release-build.md][prebuild-android-release-build] | HIGH | R8, resource shrinking, bundle compression |
+| [prebuild-new-architecture.md][prebuild-new-architecture] | HIGH | Enabling and verifying the New Architecture |
+| [prebuild-ios-release-build.md][prebuild-ios-release-build] | MEDIUM-HIGH | Frameworks, deployment target, build caching |
+| [prebuild-eas-build-profiles.md][prebuild-eas-build-profiles] | MEDIUM | Never benchmark a development build |
+| [prebuild-verify-native-changes.md][prebuild-verify-native-changes] | MEDIUM | Proving a native change actually landed |
+
 ### Bundling (`bundle-*`)
 
 | File | Impact | Description |
@@ -209,8 +251,23 @@ grep -l "bundle" references/
 | TextInput lag | [js-uncontrolled-components.md][js-uncontrolled-components] |
 | Native module slow | [native-turbo-modules.md][native-turbo-modules] → [native-threading-model.md][native-threading-model] |
 | Native library alignment issue | [native-android-16kb-alignment.md][native-android-16kb-alignment] |
+| Native change vanished after prebuild | [prebuild-cng-workflow.md][prebuild-cng-workflow] → [prebuild-verify-native-changes.md][prebuild-verify-native-changes] |
+| Enabling R8 in an Expo project | [prebuild-android-release-build.md][prebuild-android-release-build] |
+| Is the New Architecture actually on? | [prebuild-new-architecture.md][prebuild-new-architecture] |
+| Where do I put a native setting? | [prebuild-cng-workflow.md][prebuild-cng-workflow] → [prebuild-build-properties.md][prebuild-build-properties] |
+| Config plugin duplicated a block | [prebuild-config-plugin-authoring.md][prebuild-config-plugin-authoring] |
+| Measurements don't match production | [prebuild-eas-build-profiles.md][prebuild-eas-build-profiles] |
+| Slow iOS local builds | [prebuild-ios-release-build.md][prebuild-ios-release-build] |
 
 [references]: references/
+[prebuild-cng-workflow]: references/prebuild-cng-workflow.md
+[prebuild-build-properties]: references/prebuild-build-properties.md
+[prebuild-config-plugin-authoring]: references/prebuild-config-plugin-authoring.md
+[prebuild-android-release-build]: references/prebuild-android-release-build.md
+[prebuild-ios-release-build]: references/prebuild-ios-release-build.md
+[prebuild-new-architecture]: references/prebuild-new-architecture.md
+[prebuild-eas-build-profiles]: references/prebuild-eas-build-profiles.md
+[prebuild-verify-native-changes]: references/prebuild-verify-native-changes.md
 [js-lists-flatlist-flashlist]: references/js-lists-flatlist-flashlist.md
 [js-profile-react]: references/js-profile-react.md
 [js-measure-fps]: references/js-measure-fps.md

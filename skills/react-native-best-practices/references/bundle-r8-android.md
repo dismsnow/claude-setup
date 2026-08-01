@@ -6,6 +6,11 @@ tags: android, r8, proguard, minify, shrink
 
 # Skill: R8 Code Shrinking
 
+> **Expo / prebuild projects:** if `android/` is generated (gitignored), read
+> `prebuild-android-release-build.md` first — edits to generated Gradle files are
+> discarded by `expo prebuild --clean`. The guidance below applies as written to
+> bare React Native projects with committed native directories.
+
 Enable R8 for Android to shrink, optimize, and obfuscate native code.
 
 ## Quick Config
