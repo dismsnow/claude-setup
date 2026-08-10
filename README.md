@@ -18,7 +18,7 @@ Then restart Claude Code. That's the entire process.
 
 | From | To | What it is |
 |---|---|---|
-| `skills/` | `~/.claude/skills/` | 63 skills, available in **every** project on the machine |
+| `skills/` | `~/.claude/skills/` | 65 skills, available in **every** project on the machine |
 | `home/CLAUDE.md` | `~/.claude/CLAUDE.md` | Global instructions applied to every session |
 | `home/settings.json` | `~/.claude/settings.json` | Model, theme, effort level, hook wiring |
 | `home/commands/` | `~/.claude/commands/` | Custom slash commands (`/rn-prettier`) |
@@ -188,7 +188,7 @@ on a teammate's machine.
 ```
 claude-setup/
 ├── install.sh                  one command to rebuild everything
-├── skills/                     68 skill folders (63 install, 5 skipped)
+├── skills/                     70 skill folders (65 install, 5 skipped)
 ├── home/                       files restored into ~/.claude/
 │   ├── CLAUDE.md
 │   ├── settings.json
