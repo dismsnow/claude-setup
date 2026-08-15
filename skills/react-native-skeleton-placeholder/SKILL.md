@@ -2,18 +2,21 @@
 name: react-native-skeleton-placeholder
 description: >-
   Best practices and copy-paste patterns for building loading skeletons in
-  React Native with react-native-skeleton-placeholder (v5). Use this whenever
+  React Native — choosing a Fabric-safe library (moti/skeleton by default;
+  react-native-skeleton-placeholder is Paper-only and breaks on the New
+  Architecture) and laying skeletons out so they never shift the page. Use this whenever
   implementing loading/placeholder states, "content loading" UX, shimmer
   effects, or perceived-performance work for lists, cards, feeds, profiles, or
   detail screens — including fintech (transaction lists, balance cards),
   e-commerce (product grids, product detail), and social (feeds, profiles).
   Trigger even when the user only says "add a loading state", "make loading feel
   faster", "skeleton", "placeholder", or "shimmer" without naming the library.
-  Covers install/EAS setup, dark-mode theming, anti-flicker timing,
-  accessibility/reduced-motion, list performance, and per-genre layouts.
+  Covers library choice on the New Architecture (Fabric), install/EAS setup,
+  dark-mode theming, anti-flicker timing, accessibility/reduced-motion, list
+  performance, and per-genre layouts.
 ---
 
-# React Native Skeleton Placeholder — Implementation Skill
+# React Native Skeletons — Implementation Skill
 
 A skeleton is a low-fidelity preview of a screen's real layout, shown while data
 loads. Done right it makes an app feel *fast* (the user sees structure
@@ -21,7 +24,13 @@ immediately instead of a blank screen or a lonely spinner) and eliminates the
 content "jump" that happens when data pops in. Done wrong it flickers, shifts the
 layout, ignores dark mode, and janks long lists.
 
-This skill assumes `react-native-skeleton-placeholder` v5 and TypeScript.
+Everything here is TypeScript. The layout technique is the durable part and is
+identical across libraries; **which** library to use is a New Architecture
+question answered in the next section — read it before installing anything.
+
+> **Related:** a skeleton only covers the *loading* state. For the other five
+> states an async region needs (empty, error, offline, refetching, optimistic),
+> see the `react-native-data-states` skill.
 
 ---
 
@@ -60,31 +69,99 @@ indicator** (not a skeleton) for pull-to-refresh and pagination — see
 
 ---
 
-## Installation & setup
+## Pick the library first — this is a New Architecture decision
 
-The library needs two native peer dependencies:
+> [!WARNING]
+> **`react-native-skeleton-placeholder` is not safe on the New Architecture.**
+> It depends on `react-native-linear-gradient`, which is **not Fabric-compatible**
+> and fails with *"BVLinearGradient is not compatible fabric yet"*. That package
+> was last published around 2022. Since React Native 0.76 the New Architecture is
+> the default, and **Reanimated 4 is New-Arch-only** — so if a project has
+> Reanimated 4, it is definitively on Fabric and this library will not work.
+
+Check the target project before choosing:
 
 ```bash
-# peer deps first
+# New Architecture? (explicit opt-out is the only way to be on Paper in RN 0.76+)
+grep -rE "newArchEnabled" app.json app.config.* android/gradle.properties 2>/dev/null
+# Reanimated 4 present => New Arch, guaranteed
+node -p "require('./package.json').dependencies['react-native-reanimated']" 2>/dev/null
+# Expo managed, or bare/prebuilt?
+node -p "!!require('./package.json').dependencies.expo" 2>/dev/null; ls -d ios android 2>/dev/null
+```
+
+### Stack selection
+
+| Project | Use | Install | Fabric | Adds a `.so`? |
+| --- | --- | --- | --- | --- |
+| **Expo, New Arch** (default) | `moti/skeleton` | `npx expo install moti expo-linear-gradient` | ✅ | **No** |
+| **Bare RN, New Arch** | `moti/skeleton` | `npm i moti react-native-linear-gradient`¹ | ⚠️¹ | **No** |
+| **Any, want zero layout work** | `react-native-auto-skeleton` | `npm i react-native-auto-skeleton` | ✅ | **Yes** — see note |
+| **Legacy Paper only** | `react-native-skeleton-placeholder` | see [legacy](#legacy-react-native-skeleton-placeholder-paper-only) | ❌ | No |
+
+¹ On bare New Arch, `react-native-linear-gradient` is still the Fabric problem.
+Prefer `npx install-expo-modules` then `npx expo install expo-linear-gradient`,
+which works in a bare app and is Fabric-ready.
+
+**Note on `react-native-auto-skeleton`:** it generates the skeleton automatically
+from your existing view tree — no hand-drawn shapes, which makes the
+[top rule](#the-one-rule-that-matters-most) impossible to get wrong. The trade-off
+is that it ships **native code**, so it is the only option here that changes your
+native footprint. Verify Android 16 KB alignment after adding it — see
+`react-native-best-practices` → `native-android-16kb-alignment.md`. The other
+options are pure JS on top of packages you almost certainly already have.
+
+### Recommended default: `moti/skeleton`
+
+Reanimated-driven, so the shimmer runs on the UI thread (smoothest on long lists),
+and no unmaintained native dependency.
+
+```bash
+npx expo install moti expo-linear-gradient   # Expo
+# bare RN: npm i moti && npx install-expo-modules && npx expo install expo-linear-gradient
+```
+
+Requires Reanimated ≥3 (Reanimated 4 is fine). Moti itself is pure JS.
+`expo-linear-gradient` has supported Fabric since SDK 47.
+
+```tsx
+import { Skeleton } from 'moti/skeleton';
+```
+
+| Prop | Notes |
+| --- | --- |
+| `show` | `true` renders the shimmer, `false` renders children. Replaces manual branching |
+| `width` / `height` | The shape. Drive these from shared layout constants |
+| `radius` | `number` \| `'round'` \| `'square'` (default `8`) |
+| `colorMode` | `'light'` \| `'dark'` |
+| `colors` | Explicit gradient stops, overrides `colorMode` |
+| `transition` | Reanimated timing config |
+| `delay` | Stagger, in ms |
+
+`<Skeleton.Group show={loading}>` wraps several skeletons so their shimmers stay
+in phase — use it for a row or card, exactly where the legacy library wanted one
+shared `<SkeletonPlaceholder>` parent.
+
+> **Both libraries need a dev build, not Expo Go**, because Reanimated and the
+> gradient package are native. `eas build` a dev client once (or
+> `npx expo prebuild && npx expo run:ios|android`) — once, not per change.
+
+### Legacy: `react-native-skeleton-placeholder` (Paper only)
+
+Only for projects still on the old architecture. Do not add it to a new project.
+
+```bash
 npm install @react-native-masked-view/masked-view react-native-linear-gradient
-# then the library
 npm install react-native-skeleton-placeholder
 ```
 
-Because both peers ship native code, this **will not run in Expo Go**. You need a
-config-plugin dev build:
-
-- **Expo + EAS (recommended):** add the packages, then `eas build` a dev client
-  (or `npx expo prebuild && npx expo run:ios/android`). Once, not per change.
-- **Bare React Native:** `cd ios && pod install` after installing.
-
-> Note for Expo users: this library depends specifically on
-> `react-native-linear-gradient`, **not** `expo-linear-gradient`. Install the
-> one above even if you already use Expo's gradient elsewhere.
-
 ---
 
-## Core API
+## Legacy core API (`react-native-skeleton-placeholder` v5)
+
+Skip this section unless you are on Paper. It is kept because the layout model it
+describes — a container plus dimensioned items — is the one the rest of this
+document is written in, and the adapter below maps it onto Moti.
 
 `SkeletonPlaceholder` is the animated container. `SkeletonPlaceholder.Item` is a
 flexbox `View` whose dimensions define one shape in the skeleton.
@@ -116,9 +193,74 @@ flexbox `View` whose dimensions define one shape in the skeleton.
 Don't scatter raw `<SkeletonPlaceholder>` blocks across screens. Build three
 small pieces once and compose them.
 
-### 1. A theme-aware wrapper + re-exported Item
+### 1. A theme-aware wrapper + Item adapter
 
-Centralize colors so every skeleton adapts to dark mode automatically.
+This is the **one file that names the library**. Everything else in your app —
+and every playbook below — imports `Skeleton` and `SkeletonItem` from here, so
+swapping libraries is a one-file change.
+
+**Recommended (Moti, Fabric-safe):**
+
+```tsx
+// skeleton/Skeleton.tsx
+import React from 'react';
+import { View, useColorScheme, type ViewStyle, type DimensionValue } from 'react-native';
+import { Skeleton as MotiSkeleton } from 'moti/skeleton';
+import { useReduceMotion } from './useReduceMotion';
+
+const THEME = {
+  light: ['#E1E9EE', '#F2F8FC', '#E1E9EE'] as const,
+  dark:  ['#2A2E37', '#3A3F4B', '#2A2E37'] as const,
+};
+
+/** Container. Keeps every shape inside it shimmering in phase. */
+export function Skeleton({
+  children,
+  show = true,
+}: { children: React.ReactNode; show?: boolean }) {
+  return <MotiSkeleton.Group show={show}>{children}</MotiSkeleton.Group>;
+}
+
+type ItemProps = {
+  children?: React.ReactNode;
+  width?: DimensionValue;
+  height?: DimensionValue;
+  borderRadius?: number;
+} & Omit<ViewStyle, 'width' | 'height' | 'borderRadius'>;
+
+/**
+ * Mirrors SkeletonPlaceholder.Item: style props passed directly, not via `style`.
+ *  - with children -> a plain layout View (flex container, no shape drawn)
+ *  - without children -> one shimmering shape
+ */
+export function SkeletonItem({ children, width, height, borderRadius, ...layout }: ItemProps) {
+  const scheme = useColorScheme() ?? 'light';
+  const reduceMotion = useReduceMotion();
+
+  if (children) {
+    return <View style={{ width, height, ...layout } as ViewStyle}>{children}</View>;
+  }
+
+  return (
+    <View style={layout as ViewStyle}>
+      <MotiSkeleton
+        width={width}
+        height={height}
+        radius={borderRadius ?? 6}
+        colors={[...THEME[scheme]]}
+        // Reduced motion: hold a static shape instead of sweeping.
+        transition={reduceMotion ? { type: 'timing', duration: 0 } : undefined}
+      />
+    </View>
+  );
+}
+```
+
+Because the adapter keeps the `Skeleton` / `SkeletonItem` contract, **every
+layout, primitive and genre playbook below works unchanged** on either library.
+
+<details>
+<summary>Legacy equivalent (Paper / <code>react-native-skeleton-placeholder</code>)</summary>
 
 ```tsx
 // skeleton/Skeleton.tsx
@@ -154,6 +296,8 @@ export function Skeleton({ children, ...rest }: Props) {
 // Re-export so screens import both from one place.
 export const SkeletonItem = SkeletonPlaceholder.Item;
 ```
+
+</details>
 
 ### 2. Readable primitives
 
@@ -670,10 +814,14 @@ export function ProfileHeaderShapes() {
 
 ## Common pitfalls
 
+- **`BVLinearGradient is not compatible fabric yet`** — you installed
+  `react-native-skeleton-placeholder` on a New Architecture app. Fix: switch to
+  `moti/skeleton` (see [Stack selection](#stack-selection)). The adapter means no
+  other file has to change.
 - **Layout shift on load** — skeleton and content have different sizes. Fix:
   shared layout constants (the [top rule](#the-one-rule-that-matters-most)).
-- **One `<SkeletonPlaceholder>` per row** — N animation loops, jank. Fix: one
-  wrapper around all items.
+- **One container per row** — N animation loops, jank. Fix: one `<Skeleton>` /
+  `<Skeleton.Group>` around all items in the row or card.
 - **Rendering a skeleton per data record** — 200 offscreen skeletons. Fix: cap at
   viewport size (6–10).
 - **Skeleton on every refetch** — screen flashes on pull-to-refresh. Fix: gate on
@@ -689,20 +837,24 @@ export function ProfileHeaderShapes() {
 
 ## Alternatives (know when to switch)
 
-`react-native-skeleton-placeholder` is a great default: simple flexbox API, tiny,
-battle-tested. Consider switching when:
+`moti/skeleton` is the default — see [Stack selection](#stack-selection). Switch when:
 
-- **`moti/skeleton`** — Reanimated-based, so the shimmer runs on the UI thread
-  (smoothest on heavy lists) and there's no linear-gradient native dep. Good if
-  you already use Moti/Reanimated.
+- **`react-native-auto-skeleton`** — derives the skeleton from your real view tree,
+  so layout parity is automatic rather than maintained by hand. Best for large
+  legacy screens where hand-drawing every shape isn't worth it. Costs a **native
+  dependency** (check 16 KB alignment) and gives up fine control.
 - **`react-content-loader` / `react-native-content-loader`** — SVG-based; reach
   for it when you need non-rectangular shapes (custom logos, curves) that flexbox
   boxes can't express.
+- **`react-native-skeleton-placeholder`** — Paper-only projects. Do not add it to
+  anything on the New Architecture.
 
 ---
 
 ## Pre-ship checklist
 
+- [ ] **Library matches the architecture** — on Fabric/New Arch, *not*
+      `react-native-skeleton-placeholder` (see [Stack selection](#stack-selection)).
 - [ ] Skeleton mirrors the **project's real component** — shared tokens/constants
       (Strategy 1) or a masked real component (Strategy 2), never the example's
       placeholder numbers (no layout shift, no "different app" look).
@@ -715,3 +867,5 @@ battle-tested. Consider switching when:
 - [ ] **Reduced motion** respected (`speed={0}`).
 - [ ] Loading region has an **accessibility label** ("Loading content").
 - [ ] Built via **dev client / EAS** (not Expo Go) — native peers are linked.
+- [ ] The **other five states** are handled too, not just loading — empty, error,
+      offline, refetching, optimistic. See `react-native-data-states`.
