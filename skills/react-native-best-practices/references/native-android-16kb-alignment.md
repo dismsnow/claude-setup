@@ -12,10 +12,17 @@ tags: android, native, 16kb, alignment, page-size, google-play, third-party
 
 | Item                   | Details                                              |
 | ---------------------- | ---------------------------------------------------- |
-| Google Play deadline   | November 1, 2025 for apps targeting Android 15+      |
-| React Native support   | Built-in since React Native 0.79                     |
+| Google Play status     | **Enforced — both deadlines have passed**            |
+| Deadline (new builds)  | November 1, 2025 — every new app and new build       |
+| Deadline (updates)     | May 31, 2026 — extension for updates to existing apps |
+| React Native support   | Core built-in since React Native 0.77                |
 | What to check          | Third-party native libraries (`.so` files)           |
 | Official documentation | [developer.android.com/guide/practices/page-sizes][] |
+
+> [!IMPORTANT]
+> This is no longer a deadline to prepare for — it is a live submission gate for
+> anything targeting Android 15+. Treat a misaligned third-party `.so` as a
+> release blocker, not a warning.
 
 [developer.android.com/guide/practices/page-sizes]: https://developer.android.com/guide/practices/page-sizes
 
@@ -39,12 +46,30 @@ For deeper ELF-level inspection, use Android's [check_elf_alignment.sh][] script
 
 ## When to Check
 
-React Native 0.79+ builds core binaries with correct alignment. However, **third-party
+React Native 0.77+ builds core binaries with correct alignment. However, **third-party
 native libraries** may still be misaligned. Check alignment when:
 
 * Adding or updating SDKs with native code
 * Preparing a release for Google Play
 * Investigating crashes on Android 15+ devices with 16 KB page size
+
+### Know your risk surface first
+
+Most React Native packages ship **no** `.so` at all — Kotlin/Swift modules compile to
+dex/frameworks, not native binaries. Only packages with C++/NDK code are ever at risk,
+so list them before auditing anything:
+
+```bash
+# packages shipping prebuilt binaries
+find node_modules -name "*.so" | sed 's|node_modules/||; s|/.*||' | sort -u
+# packages that compile C++ at build time
+find node_modules -maxdepth 3 -name "CMakeLists.txt" | sed 's|node_modules/||; s|/.*||' | sort -u
+```
+
+A typical Expo app returns only a handful — `expo-modules-core`, `react-native-reanimated`,
+`react-native-worklets`, `react-native-gesture-handler`, `react-native-screens`. Adding a
+pure-JS or Kotlin/Swift-only package does not change this list. Re-run it after every
+dependency addition and compare; a new entry is the signal to audit.
 
 ---
 
